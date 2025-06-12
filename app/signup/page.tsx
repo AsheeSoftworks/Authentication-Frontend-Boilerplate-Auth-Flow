@@ -9,7 +9,6 @@ import {
   Mail,
   Lock,
   User,
-  Github,
   Chrome,
   Check,
   Loader2,
@@ -34,10 +33,12 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function SignUp() {
+  // Toggles visibility for password and confirmation inputs
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
+  // Schema for client-side form validation using Zod
   const registerSchema = z
     .object({
       name: z.string().min(2, "Name must be at least 2 characters"),
@@ -52,89 +53,92 @@ export default function SignUp() {
 
   type RegisterFormData = z.infer<typeof registerSchema>;
 
+  // Initialize form state and validation errors
   const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
     email: "",
     password: "",
     confirm_password: "",
   });
-
   const [formErrors, setFormErrors] = useState<
     Partial<Record<keyof RegisterFormData, string>>
   >({});
-
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const router = useRouter();
-
   const { signUp, isLoading, error, clearError, googleLogin } = useAuthStore();
 
-  // Clear errors when user starts typing
+  // Auto-clear any API error after 5 seconds
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => {
-        clearError();
-      }, 5000); // Auto-clear error after 5 seconds
-
+      const timer = setTimeout(clearError, 5000);
       return () => clearTimeout(timer);
     }
   }, [error, clearError]);
 
-  // Validate form in real-time after first submit attempt
+  // Re-validate form whenever inputs change after initial submit
   useEffect(() => {
-    if (submitAttempted) {
-      validateForm();
-    }
+    if (submitAttempted) validateForm();
   }, [formData, submitAttempted]);
 
-  const handleInputChange = (field: keyof RegisterFormData, value: string) => {
+  /**
+   * Updates form field values and clears related validation error
+   */
+  const handleInputChange = (
+    field: keyof RegisterFormData,
+    value: string
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-
-    // Clear specific field error when user starts typing
     if (formErrors[field]) {
       setFormErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
+  /**
+   * Validates formData against Zod schema.
+   * On failure, populates formErrors and returns false.
+   */
   const validateForm = () => {
     const result = registerSchema.safeParse(formData);
-
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof RegisterFormData, string>> = {};
       result.error.errors.forEach((err) => {
-        const field = err.path[0] as keyof RegisterFormData;
-        fieldErrors[field] = err.message;
+        fieldErrors[err.path[0] as keyof RegisterFormData] = err.message;
       });
       setFormErrors(fieldErrors);
       return false;
     }
-
     setFormErrors({});
     return true;
   };
 
+  // Visual indicators for password strength requirements
   const passwordRequirements = [
     { text: "At least 8 characters", met: formData.password.length >= 8 },
     { text: "Contains uppercase letter", met: /[A-Z]/.test(formData.password) },
     { text: "Contains lowercase letter", met: /[a-z]/.test(formData.password) },
     { text: "Contains number", met: /\d/.test(formData.password) },
   ];
-
   const isPasswordStrong = passwordRequirements.every((req) => req.met);
 
+  /**
+   * Form submission handler:
+   * - Validates form
+   * - Ensures terms are accepted
+   * - Calls signUp via Zustand store
+   * - On success, shows a confirmation and redirects to email verification
+   * - Handles API errors and populates field-specific messages
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     useAuthStore.setState({ isLoading: true });
     setSubmitAttempted(true);
     clearError();
 
-    // Validate form
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
-    // Check terms agreement
     if (!agreeToTerms) {
       setFormErrors((prev) => ({
         ...prev,
@@ -145,49 +149,46 @@ export default function SignUp() {
 
     try {
       const { name, email, password, confirm_password } = formData;
-
       await signUp(name, email, password, confirm_password);
-
       setShowSuccessMessage(true);
 
-      // Redirect to sign in after a delay
       setTimeout(() => {
         router.push("/verify-email?message=registration-success");
       }, 2000);
-      
     } catch (error: any) {
       console.error("Sign up error:", error);
 
-      // Handle specific error cases
       if (error.code === "CONFLICT" && error.field === "email") {
         setFormErrors((prev) => ({
           ...prev,
           email: "An account with this email already exists",
         }));
       } else if (error.code === "VALIDATION_ERROR") {
-        // Handle validation errors from server
         setFormErrors((prev) => ({
           ...prev,
           [error.field || "general"]: error.message,
         }));
       }
-    } finally{
+    } finally {
       useAuthStore.setState({ isLoading: false });
     }
   };
 
+  /**
+   * Handles sign-in via Google OAuth:
+   * - On success, triggers googleLogin flow from store
+   * - On failure, logs error and sets user-facing message
+   */
   const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (credentialResponse) => {
+    onSuccess: async (cred) => {
       try {
-        await googleLogin(credentialResponse.code);
-        // router.push("/dashboard");
-      } catch (error: any) {
-        console.error("Google login failed:", error);
-        // Error will be handled by the store
+        await googleLogin(cred.code);
+      } catch (err) {
+        console.error("Google login failed:", err);
       }
     },
-    onError: (error) => {
-      console.error("Google login failed:", error);
+    onError: (err) => {
+      console.error("Google login error:", err);
       useAuthStore.setState({
         error: {
           message: "Google login failed. Please try again.",
@@ -198,10 +199,10 @@ export default function SignUp() {
     flow: "auth-code",
   });
 
-  const getErrorMessage = (field: keyof RegisterFormData) => {
-    return formErrors[field];
-  };
+  const getErrorMessage = (field: keyof RegisterFormData) =>
+    formErrors[field];
 
+  // Show confirmation screen after successful registration
   if (showSuccessMessage) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-8">

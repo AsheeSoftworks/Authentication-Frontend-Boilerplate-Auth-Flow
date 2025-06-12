@@ -3,18 +3,38 @@ import { ArrowRight, Shield, Lock, Mail, Users, Code, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
+/**
+ * Home Page Component
+ * 
+ * The main landing page for the AuthFlow authentication boilerplate.
+ * Features include:
+ * - Product showcase with key features
+ * - Demo preview cards
+ * - Call-to-action sections
+ * - Responsive layout for all device sizes
+ * 
+ * Sections:
+ * 1. Header with navigation
+ * 2. Hero section with value proposition
+ * 3. Feature showcase
+ * 4. Call-to-action
+ * 5. Footer with navigation
+ */
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* Header */}
+      {/* Header Section */}
       <header className="px-6 py-4">
         <nav className="max-w-7xl mx-auto flex items-center justify-between">
+          {/* Logo */}
           <div className="flex items-center space-x-2">
             <Shield className="h-8 w-8 text-blue-600" />
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               AuthFlow
             </span>
           </div>
+          
+          {/* Navigation Links */}
           <div className="flex items-center space-x-4">
             <Link href="/signin">
               <Button variant="ghost">Sign In</Button>
@@ -29,22 +49,26 @@ export default function Home() {
       {/* Hero Section */}
       <section className="px-6 py-20">
         <div className="max-w-4xl mx-auto text-center">
+          {/* Feature Badge */}
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-8">
             <Zap className="h-4 w-4 mr-2" />
             Production-Ready Authentication
           </div>
           
+          {/* Main Heading */}
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
             Beautiful Authentication
             <br />
             Made Simple
           </h1>
           
+          {/* Value Proposition */}
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
             A modern, secure, and customizable authentication boilerplate built with Next.js. 
             Everything you need to get started with user authentication in your applications.
           </p>
           
+          {/* Call-to-Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link href="/signup">
               <Button size="lg" className="w-full sm:w-auto">
@@ -59,12 +83,16 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Demo Preview */}
+          {/* Feature Preview Cards */}
           <div className="relative max-w-3xl mx-auto">
+            {/* Gradient Background Effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 blur-3xl opacity-20 rounded-3xl"></div>
+            
+            {/* Feature Cards Container */}
             <Card className="relative backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
               <CardContent className="p-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Secure Authentication */}
                   <div className="text-center">
                     <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <Lock className="h-6 w-6 text-blue-600" />
@@ -72,6 +100,8 @@ export default function Home() {
                     <h3 className="font-semibold text-gray-900">Secure</h3>
                     <p className="text-sm text-gray-600 mt-1">Best practices</p>
                   </div>
+                  
+                  {/* Social Authentication */}
                   <div className="text-center">
                     <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <Users className="h-6 w-6 text-purple-600" />
@@ -79,6 +109,8 @@ export default function Home() {
                     <h3 className="font-semibold text-gray-900">Social Auth</h3>
                     <p className="text-sm text-gray-600 mt-1">Multiple providers</p>
                   </div>
+                  
+                  {/* Email Verification */}
                   <div className="text-center">
                     <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <Mail className="h-6 w-6 text-green-600" />
@@ -86,6 +118,8 @@ export default function Home() {
                     <h3 className="font-semibold text-gray-900">Email Verify</h3>
                     <p className="text-sm text-gray-600 mt-1">Built-in flows</p>
                   </div>
+                  
+                  {/* TypeScript Support */}
                   <div className="text-center">
                     <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <Code className="h-6 w-6 text-orange-600" />
@@ -103,6 +137,7 @@ export default function Home() {
       {/* Features Section */}
       <section className="px-6 py-20 bg-white/50">
         <div className="max-w-6xl mx-auto">
+          {/* Section Heading */}
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
               Everything You Need
@@ -112,6 +147,7 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Feature Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
@@ -151,12 +187,18 @@ export default function Home() {
                 color: 'yellow'
               }
             ].map((feature, index) => (
+              // Feature Card
               <Card key={index} className="group hover:shadow-lg transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
                 <CardContent className="p-6">
+                  {/* Feature Icon */}
                   <div className={`h-12 w-12 bg-${feature.color}-100 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
                     <feature.icon className={`h-6 w-6 text-${feature.color}-600`} />
                   </div>
+                  
+                  {/* Feature Title */}
                   <h3 className="text-xl font-semibold mb-3 text-gray-900">{feature.title}</h3>
+                  
+                  {/* Feature Description */}
                   <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                 </CardContent>
               </Card>
@@ -165,7 +207,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Call-to-Action Section */}
       <section className="px-6 py-20">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
@@ -174,6 +216,8 @@ export default function Home() {
           <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
             Try our demo to see all authentication flows in action, or dive right into the code.
           </p>
+          
+          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup">
               <Button size="lg" className="w-full sm:w-auto">
@@ -190,15 +234,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer Section */}
       <footer className="border-t bg-white/50 px-6 py-8">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">
+          {/* Logo */}
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
             <Shield className="h-6 w-6 text-blue-600" />
             <span className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               AuthFlow
             </span>
           </div>
+          
+          {/* Footer Links */}
           <div className="flex items-center space-x-6 text-sm text-gray-600">
             <Link href="/signin" className="hover:text-blue-600 transition-colors">
               Sign In

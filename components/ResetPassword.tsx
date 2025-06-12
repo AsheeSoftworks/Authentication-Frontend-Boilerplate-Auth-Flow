@@ -16,12 +16,30 @@ import { z } from "zod";
 import useAuthStore from "@/store/auth";
 import { Alert, AlertDescription } from "./ui/alert";
 
+/**
+ * ResetPassword Component
+ * 
+ * Handles the password reset workflow:
+ * 1. Validates password reset token
+ * 2. Collects new password with confirmation
+ * 3. Enforces password strength requirements
+ * 4. Submits new password to authentication API
+ * 5. Provides success feedback upon completion
+ * 
+ * Props:
+ * @param {string} token - Password reset token from URL
+ */
 export default function ResetPassword({token}: { token: string }) {
-
+  // State for password visibility toggles
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  /**
+   * Zod schema for password validation:
+   * - Minimum 6 characters
+   * - Confirm password must match password
+   */
   const registerSchema = z
     .object({
       password: z.string().min(6, "Password must be at least 6 characters"),
@@ -32,40 +50,58 @@ export default function ResetPassword({token}: { token: string }) {
       path: ["confirm_password"],
     });
 
+  // Type inference for form data
   type RegisterFormData = z.infer<typeof registerSchema>;
 
+  // Form state management
   const [formData, setFormData] = useState<RegisterFormData>({
     password: "",
     confirm_password: "",
   });
 
+  // Form validation errors
   const [formErrors, setFormErrors] = useState<
     Partial<Record<keyof RegisterFormData, string>>
   >({});
 
-    const [submitAttempted, setSubmitAttempted] = useState(false);
+  // Tracks form submission attempts
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   
-  const { passwordReset, isLoading, error, clearError, googleLogin } =
-    useAuthStore();
+  // Authentication store hooks
+  const { passwordReset, isLoading, error, clearError } = useAuthStore();
 
-    // Clear errors when user starts typing
-      useEffect(() => {
-        if (error) {
-          const timer = setTimeout(() => {
-            clearError();
-          }, 5000); // Auto-clear error after 5 seconds
-    
-          return () => clearTimeout(timer);
-        }
-      }, [error, clearError]);
-    
-      // Validate form in real-time after first submit attempt
-      useEffect(() => {
-        if (submitAttempted) {
-          validateForm();
-        }
-      }, [formData, submitAttempted]);
+  /**
+   * Effect: Auto-clear error messages after 5 seconds
+   * Improves UX by clearing errors without user interaction
+   */
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        clearError();
+      }, 5000); // Auto-clear error after 5 seconds
 
+      return () => clearTimeout(timer);
+    }
+  }, [error, clearError]);
+
+  /**
+   * Effect: Real-time form validation
+   * Validates form when data changes after initial submission attempt
+   */
+  useEffect(() => {
+    if (submitAttempted) {
+      validateForm();
+    }
+  }, [formData, submitAttempted]);
+
+  /**
+   * Handles input field changes
+   * - Updates form state
+   * - Clears field-specific errors on input
+   * 
+   * @param field - Field name to update
+   * @param value - New field value
+   */
   const handleInputChange = (field: keyof RegisterFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -75,6 +111,11 @@ export default function ResetPassword({token}: { token: string }) {
     }
   };
 
+  /**
+   * Validates form against Zod schema
+   * - Sets error messages for invalid fields
+   * - Returns boolean indicating validation success
+   */
   const validateForm = () => {
     const result = registerSchema.safeParse(formData);
 
@@ -92,37 +133,52 @@ export default function ResetPassword({token}: { token: string }) {
     return true;
   };
 
+  /**
+   * Handles form submission
+   * - Validates form
+   * - Calls password reset API
+   * - Manages loading states
+   * - Transitions to success state on success
+   * 
+   * @param e - Form event
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    useAuthStore.setState({ isLoading: true });
+    setSubmitAttempted(true);
+    
+    // Validate form before submission
+    if (!validateForm()) return;
 
-    // Proceed with valid data
+    useAuthStore.setState({ isLoading: true });
     const { confirm_password, password } = formData;
-    console.log("Start 1");
 
     try {
-      console.log("Next 1");
-      console.log(confirm_password, password);
+      // Initiate password reset request
       await passwordReset(password, confirm_password, token);
-
       setIsSubmitted(true);
-
     } catch (error: any) {
-      console.error("Sign up error:", error);
+      console.error("Password reset error:", error);
 
+      // Handle specific error cases
       if (error.code === "VALIDATION_ERROR") {
-        // Handle validation errors from server
         setFormErrors((prev) => ({
           ...prev,
           [error.field || "general"]: error.message,
         }));
       }
-    } finally{
+    } finally {
       useAuthStore.setState({ isLoading: false });
     }
   };
 
+  /**
+   * Password strength requirements
+   * - At least 8 characters
+   * - Uppercase letter
+   * - Lowercase letter
+   * - Number
+   */
   const passwordRequirements = [
     { text: "At least 8 characters", met: formData.password.length >= 8 },
     { text: "Contains uppercase letter", met: /[A-Z]/.test(formData.password) },
@@ -130,13 +186,20 @@ export default function ResetPassword({token}: { token: string }) {
     { text: "Contains number", met: /\d/.test(formData.password) },
   ];
 
+  // Checks if all password requirements are met
   const isPasswordStrong = passwordRequirements.every((req) => req.met);
 
-
-   const getErrorMessage = (field: keyof RegisterFormData) => {
+  /**
+   * Gets error message for a specific field
+   * 
+   * @param field - Field name to retrieve error for
+   * @returns Error message string or undefined
+   */
+  const getErrorMessage = (field: keyof RegisterFormData) => {
     return formErrors[field];
   }; 
 
+  // Render success state after password reset
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-8">
@@ -157,6 +220,7 @@ export default function ResetPassword({token}: { token: string }) {
 
             <CardContent className="space-y-6">
               <div className="text-center space-y-4">
+                {/* Success message */}
                 <div className="bg-green-50 rounded-lg p-4">
                   <p className="text-sm text-green-800">
                     You can now sign in with your new password. For security
@@ -164,6 +228,7 @@ export default function ResetPassword({token}: { token: string }) {
                   </p>
                 </div>
 
+                {/* Sign-in button */}
                 <Button
                   asChild
                   className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -178,7 +243,7 @@ export default function ResetPassword({token}: { token: string }) {
             </CardContent>
           </Card>
 
-          {/* Demo Notice */}
+          {/* Demo environment indicator */}
           <div className="mt-6 text-center">
             <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
@@ -190,10 +255,11 @@ export default function ResetPassword({token}: { token: string }) {
     );
   }
 
+  // Main form render
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Back to Sign In */}
+        {/* Back navigation */}
         <Link
           href="/signin"
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8 transition-colors"
@@ -202,7 +268,7 @@ export default function ResetPassword({token}: { token: string }) {
           Back to Sign In
         </Link>
 
-        {/* Reset Password Card */}
+        {/* Password Reset Card */}
         <Card className="backdrop-blur-sm bg-white/95 border-0 shadow-2xl">
           <CardHeader className="text-center pb-2">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -217,7 +283,7 @@ export default function ResetPassword({token}: { token: string }) {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Security Notice */}
+            {/* Security notice */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-xs text-amber-800">
                 <strong>Security Notice:</strong> This reset link will expire in
@@ -225,6 +291,7 @@ export default function ResetPassword({token}: { token: string }) {
               </p>
             </div>
 
+            {/* Error display */}
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
@@ -240,8 +307,9 @@ export default function ResetPassword({token}: { token: string }) {
               </Alert>
             )}
 
+            {/* Password reset form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* New Password */}
+              {/* New Password Field */}
               <div className="space-y-2">
                 <label htmlFor="password">New Password</label>
                 <div className="relative">
@@ -257,6 +325,7 @@ export default function ResetPassword({token}: { token: string }) {
                     className="pl-10 pr-10 h-11"
                     required
                   />
+                  {/* Password visibility toggle */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -269,6 +338,7 @@ export default function ResetPassword({token}: { token: string }) {
                     )}
                   </button>
                 </div>
+                {/* Password error message */}
                 {getErrorMessage("password") && (
                   <p className="text-xs text-red-600 flex items-center mt-1">
                     <AlertCircle className="h-3 w-3 mr-1" />
@@ -277,7 +347,7 @@ export default function ResetPassword({token}: { token: string }) {
                 )}
               </div>
 
-              {/* Password Requirements */}
+              {/* Password strength indicator */}
               {formData.password && (
                 <div className="space-y-2">
                   <div className="text-xs text-gray-600">
@@ -308,7 +378,7 @@ export default function ResetPassword({token}: { token: string }) {
                 </div>
               )}
 
-              {/* Confirm Password */}
+              {/* Confirm Password Field */}
               <div className="space-y-2">
                 <label htmlFor="confirm_password">Confirm New Password</label>
                 <div className="relative">
@@ -324,6 +394,7 @@ export default function ResetPassword({token}: { token: string }) {
                     className="pl-10 pr-10 h-11"
                     required
                   />
+                  {/* Confirm password visibility toggle */}
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -336,6 +407,7 @@ export default function ResetPassword({token}: { token: string }) {
                     )}
                   </button>
                 </div>
+                {/* Confirm password error message */}
                 {getErrorMessage("confirm_password") && (
                   <p className="text-xs text-red-600 flex items-center mt-1">
                     <AlertCircle className="h-3 w-3 mr-1" />
@@ -344,10 +416,11 @@ export default function ResetPassword({token}: { token: string }) {
                 )}
               </div>
 
+              {/* Submit button */}
               <Button
                 type="submit"
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                disabled={ !isPasswordStrong || isLoading }
+                disabled={!isPasswordStrong || isLoading}
               >
                 {isLoading && <Loader2
                   className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
@@ -356,7 +429,7 @@ export default function ResetPassword({token}: { token: string }) {
               </Button>
             </form>
 
-            {/* Security Tips */}
+            {/* Security tips section */}
             <div className="bg-blue-50 rounded-lg p-4 space-y-2">
               <h4 className="text-sm font-medium text-blue-900">
                 Security Tips:
@@ -370,7 +443,7 @@ export default function ResetPassword({token}: { token: string }) {
           </CardContent>
         </Card>
 
-        {/* Demo Notice */}
+        {/* Demo environment indicator */}
         <div className="mt-6 text-center">
           <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
             <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>

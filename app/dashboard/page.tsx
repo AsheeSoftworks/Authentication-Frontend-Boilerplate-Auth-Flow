@@ -32,24 +32,77 @@ import {
 import useAuthStore from "@/store/auth";
 import { useRouter } from "next/navigation";
 
+/**
+ * Dashboard Component
+ * 
+ * Main dashboard interface for authenticated users. Displays:
+ * - User profile information
+ * - Account statistics and metrics
+ * - Recent activity timeline
+ * - Notifications
+ * - Quick action buttons
+ * 
+ * Features:
+ * - Responsive layout with grid organization
+ * - Dynamic data from authentication store
+ * - Gradient UI elements for visual hierarchy
+ * - Demo indicators for non-production environments
+ * - Comprehensive sign-out functionality
+ */
 export default function Dashboard() {
+  // State for user profile data with default values
   const [user, setUser] = useState({
     name: "John Doe",
     email: "john@example.com",
-    avatar: "JD",
+    avatar: "JD", // Initials-based avatar
     joinDate: "March 2024",
     lastLogin: "2 hours ago",
   });
 
+  // Authentication store hook for logout functionality
   const { logOut } = useAuthStore();
 
+  /**
+   * Effect: Initialize user data from localStorage
+   * 
+   * On component mount:
+   * 1. Retrieves auth data from localStorage
+   * 2. Parses and extracts user information
+   * 3. Formats dates for display
+   * 4. Sets user state with actual or fallback data
+   */
   useEffect(() => {
     const data = localStorage.getItem("auth-storage");
 
     if (data) {
-      const value: JWTAuthState = JSON.parse(data);
-
-      if (value.state.user === null) {
+      try {
+        const value: JWTAuthState = JSON.parse(data);
+        
+        if (value.state.user === null) {
+          // Use fallback data if no user in store
+          setUser({
+            name: "John Doe",
+            email: "john@example.com",
+            avatar: "JD",
+            joinDate: "March 2024",
+            lastLogin: "2 hours ago",
+          });
+        } else {
+          // Set actual user data from auth store
+          setUser({
+            name: value.state.user.name,
+            email: value.state.user.email,
+            avatar: value.state.user.name
+              .split(" ")
+              .map((word) => word[0])
+              .join(""),
+            joinDate: formatDate(value.state.user.createdAt),
+            lastLogin: formatDate(value.state.user.updatedAt),
+          });
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        // Fallback to default values on error
         setUser({
           name: "John Doe",
           email: "john@example.com",
@@ -57,19 +110,9 @@ export default function Dashboard() {
           joinDate: "March 2024",
           lastLogin: "2 hours ago",
         });
-      } else {
-        setUser({
-          name: value.state.user.name,
-          email: value.state.user.email,
-          avatar: value.state.user.name
-            .split(" ")
-            .map((word) => word[0])
-            .join(""),
-          joinDate: formatDate(value.state.user.createdAt),
-          lastLogin: formatDate(value.state.user.updatedAt),
-        });
       }
     } else {
+      // Fallback when no auth data exists
       setUser({
         name: "John Doe",
         email: "john@example.com",
@@ -80,6 +123,7 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Static notification data (would be dynamic in production)
   const [notifications] = useState([
     {
       id: 1,
@@ -104,7 +148,8 @@ export default function Dashboard() {
     },
   ]);
 
-  const [stats] = useState([
+  // Account statistics derived from user data
+  const stats = [
     {
       label: "Account Status",
       value: "Verified",
@@ -124,8 +169,14 @@ export default function Dashboard() {
       color: "purple",
     },
     { label: "Security Score", value: "95%", icon: Shield, color: "orange" },
-  ]);
+  ];
 
+  /**
+   * Formats date strings for display
+   * 
+   * @param dateString - ISO date string
+   * @returns Formatted date string (e.g., "15 May 2024")
+   */
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
@@ -137,20 +188,24 @@ export default function Dashboard() {
 
   const router = useRouter();
 
+  /**
+   * Handles user sign-out process:
+   * 1. Calls authentication store logout
+   * 2. Redirects to sign-in page
+   * 3. Handles errors during logout
+   */
   const handleSignOut = async () => {
-    try{
-        console.log("begin")
-        await logOut()
-        router.push("/signin")
-        console.log("finish")
+    try {
+      await logOut();
+      router.push("/signin");
     } catch (error) {
-        console.error(error)
+      console.error("Logout error:", error);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
+      {/* Header Section */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -164,7 +219,7 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Search Bar */}
+            {/* Search Bar (Desktop) */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -178,6 +233,7 @@ export default function Dashboard() {
 
             {/* User Menu */}
             <div className="flex items-center space-x-4">
+              {/* Notifications Indicator */}
               <Button variant="ghost" size="sm" className="relative">
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
@@ -185,6 +241,7 @@ export default function Dashboard() {
                 </span>
               </Button>
 
+              {/* User Profile */}
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
                   {user.avatar}
@@ -202,9 +259,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
+        {/* Welcome Banner */}
         <div className="mb-8">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
             <div className="absolute inset-0 bg-black/10"></div>
@@ -232,12 +289,13 @@ export default function Dashboard() {
                 </Button>
               </div>
             </div>
+            {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32"></div>
             <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 translate-x-16"></div>
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
             <Card
@@ -265,8 +323,9 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Activity */}
+          {/* Recent Activity Column */}
           <div className="lg:col-span-2">
             <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
@@ -333,9 +392,9 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Notifications & Quick Actions */}
+          {/* Notifications and Actions Column */}
           <div className="space-y-6">
-            {/* Notifications */}
+            {/* Notifications Card */}
             <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -378,7 +437,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
+            {/* Quick Actions Card */}
             <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
@@ -411,7 +470,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Demo Notice */}
+        {/* Demo Environment Indicator */}
         <div className="mt-8 text-center">
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-green-50 text-green-700 text-sm font-medium">
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>

@@ -16,24 +16,46 @@ import useAuthStore from "@/store/auth";
 import { z } from "zod";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+/**
+ * ForgotPassword Component
+ * 
+ * Handles the password reset workflow:
+ * 1. User enters email to request password reset link
+ * 2. Shows success UI after submission
+ * 3. Provides option to resend verification email
+ * 
+ * Features:
+ * - Form validation using Zod schema
+ * - Error handling and display
+ * - Loading states during API calls
+ * - Auto-clear error messages
+ * - Demo mode indicator (no actual emails sent)
+ */
 export default function ForgotPassword() {
+  // Tracks if form has been successfully submitted
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submitEmail, setSubmitEmail] = useState("")
+  // Stores the email submitted for reset request
+  const [submitEmail, setSubmitEmail] = useState("");
 
+  // Zod schema for form validation
   const registerSchema = z.object({
     email: z.string().email("Please enter a valid email"),
   });
 
+  // Type inference for form data
   type RegisterFormData = z.infer<typeof registerSchema>;
 
+  // Manages form field values
   const [formData, setFormData] = useState<RegisterFormData>({
     email: "",
   });
 
+  // Stores validation errors per field
   const [formErrors, setFormErrors] = useState<
     Partial<Record<keyof RegisterFormData, string>>
   >({});
 
+  // Authentication store hooks for state and actions
   const {
     requestPasswordReset,
     isLoading,
@@ -42,30 +64,50 @@ export default function ForgotPassword() {
     resendVerificationEmail,
   } = useAuthStore();
 
-    const [submitAttempted, setSubmitAttempted] = useState(false);
+  // Tracks if form submission was attempted
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   
-  // Clear errors when user starts typing
-    useEffect(() => {
-      if (error) {
-        const timer = setTimeout(() => {
-          clearError();
-        }, 5000); // Auto-clear error after 5 seconds
-  
-        return () => clearTimeout(timer);
-      }
-    }, [error, clearError]);
-  
-    // Validate form in real-time after first submit attempt
-    useEffect(() => {
-      if (submitAttempted) {
-        validateForm();
-      }
-    }, [formData, submitAttempted]);
+  /**
+   * Effect: Auto-clear error messages after 5 seconds
+   * Clears authentication errors to improve UX
+   */
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        clearError();
+      }, 5000);
 
+      return () => clearTimeout(timer);
+    }
+  }, [error, clearError]);
+
+  /**
+   * Effect: Real-time form validation
+   * Validates form when data changes after initial submission attempt
+   */
+  useEffect(() => {
+    if (submitAttempted) {
+      validateForm();
+    }
+  }, [formData, submitAttempted]);
+
+  /**
+   * Handles input field changes
+   * Updates form state and clears field-specific errors
+   * 
+   * @param field - Field name to update
+   * @param value - New field value
+   */
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  /**
+   * Validates form against Zod schema
+   * Sets error messages for invalid fields
+   * 
+   * @returns Boolean indicating validation success
+   */
   const validateForm = () => {
     const result = registerSchema.safeParse(formData);
 
@@ -85,21 +127,31 @@ export default function ForgotPassword() {
 
   const result = registerSchema.safeParse(formData);
 
+  /**
+   * Handles form submission
+   * - Validates form
+   * - Calls password reset API
+   * - Manages loading states
+   * - Transitions to success UI on success
+   * 
+   * @param e - Form event
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    // Proceed with valid data
+    setSubmitAttempted(true);
+    
+    // Validate form before submission
+    if (!validateForm()) return;
+
     const { email } = formData;
     setSubmitEmail(email);
 
-    console.log("Start 1");
-
     try {
-      console.log("Next 1");
-      console.log(email);
+      // Initiate password reset request
       await requestPasswordReset(email);
 
-      useAuthStore.setState({ isLoading: false });
+      // Update state only if no errors occurred
       if (!useAuthStore.getState().error) {
         setIsSubmitted(true);
       }
@@ -108,7 +160,6 @@ export default function ForgotPassword() {
 
       // Handle specific error cases
       if (error.code === "VALIDATION_ERROR") {
-        // Handle validation errors from server
         setFormErrors((prev) => ({
           ...prev,
           [error.field || "general"]: error.message,
@@ -119,6 +170,10 @@ export default function ForgotPassword() {
     }
   };
 
+  /**
+   * Handles resending verification email
+   * Uses the stored submitEmail value
+   */
   const handleResendVerificationEmail = () => {
     try {
       useAuthStore.setState({ isLoading: true });
@@ -127,9 +182,7 @@ export default function ForgotPassword() {
     } catch (error: any) {
       console.error("Sign up error:", error);
 
-      // Handle specific error cases
       if (error.code === "VALIDATION_ERROR") {
-        // Handle validation errors from server
         setFormErrors((prev) => ({
           ...prev,
           [error.field || "general"]: error.message,
@@ -140,15 +193,22 @@ export default function ForgotPassword() {
     }
   };
 
+  /**
+   * Gets error message for a specific field
+   * 
+   * @param field - Field name to retrieve error for
+   * @returns Error message string or undefined
+   */
   const getErrorMessage = (field: keyof RegisterFormData) => {
     return formErrors[field];
   };
 
+  // Render success state after form submission
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
-          {/* Back to Sign In */}
+          {/* Back navigation */}
           <Link
             href="/signin"
             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8 transition-colors"
@@ -157,7 +217,7 @@ export default function ForgotPassword() {
             Back to Sign In
           </Link>
 
-          {/* Success Card */}
+          {/* Success confirmation card */}
           <Card className="backdrop-blur-sm bg-white/95 border-0 shadow-2xl">
             <CardHeader className="text-center pb-2">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -225,7 +285,7 @@ export default function ForgotPassword() {
             </CardContent>
           </Card>
 
-          {/* Demo Notice */}
+          {/* Demo environment indicator */}
           <div className="mt-6 text-center">
             <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
@@ -237,10 +297,11 @@ export default function ForgotPassword() {
     );
   }
 
+  // Main form render
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Back to Sign In */}
+        {/* Back navigation */}
         <Link
           href="/signin"
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8 transition-colors"
@@ -249,7 +310,7 @@ export default function ForgotPassword() {
           Back to Sign In
         </Link>
 
-        {/* Forgot Password Card */}
+        {/* Password reset request card */}
         <Card className="backdrop-blur-sm bg-white/95 border-0 shadow-2xl">
           <CardHeader className="text-center pb-2">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -265,6 +326,7 @@ export default function ForgotPassword() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* Error display */}
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
@@ -279,6 +341,8 @@ export default function ForgotPassword() {
                 </AlertDescription>
               </Alert>
             )}
+            
+            {/* Reset form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="email">Email address</label>
@@ -293,6 +357,7 @@ export default function ForgotPassword() {
                     className="pl-10 h-11"
                     required
                   />
+                  {/* Field-level error display */}
                   {getErrorMessage("email") && (
                   <p className="text-xs text-red-600 flex items-center mt-1">
                     <AlertCircle className="h-3 w-3 mr-1" />
@@ -305,6 +370,7 @@ export default function ForgotPassword() {
                 </p>
               </div>
 
+              {/* Submit button */}
               <Button
                 type="submit"
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -323,7 +389,7 @@ export default function ForgotPassword() {
               </Button>
             </form>
 
-            {/* Additional Help */}
+            {/* Supplementary information */}
             <div className="space-y-4 text-center text-sm">
               <div className="bg-blue-50 rounded-lg p-4">
                 <h4 className="font-medium text-blue-900 mb-2">Need help?</h4>
@@ -346,7 +412,7 @@ export default function ForgotPassword() {
           </CardContent>
         </Card>
 
-        {/* Demo Notice */}
+        {/* Demo environment indicator */}
         <div className="mt-6 text-center">
           <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
             <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>

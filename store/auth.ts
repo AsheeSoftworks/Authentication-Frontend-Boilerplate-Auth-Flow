@@ -3,8 +3,12 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import axios, { AxiosError } from "axios";
 import Cookies from "js-cookie";
 
+// Base API endpoint from environment variables
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+/**
+ * User object structure for authentication state
+ */
 interface User {
   email: string;
   firstName: string;
@@ -12,6 +16,9 @@ interface User {
   role: string;
 }
 
+/**
+ * Standardized structure for handling authentication errors
+ */
 interface AuthError {
   message: string;
   code?: string;
@@ -19,6 +26,10 @@ interface AuthError {
   statusCode?: number;
 }
 
+/**
+ * Authentication state management interface
+ * Includes user info, authentication flags, and async actions
+ */
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -55,6 +66,9 @@ interface AuthState {
   refreshToken: () => Promise<void>;
 }
 
+/**
+ * Initial state used for resetting or initializing the auth store
+ */
 const initialState = {
   user: null,
   token: null,
@@ -64,12 +78,14 @@ const initialState = {
   resetToken: null,
 };
 
-// Enhanced error handler utility
+/**
+ * Utility function for transforming raw errors into standardized AuthError objects
+ * Handles network errors, HTTP status codes, and unknown cases
+ */
 const handleAuthError = (error: unknown): AuthError => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<any>;
 
-    // No response = server is likely offline or unreachable
     if (!axiosError.response) {
       return {
         message: "Server is unreachable. Please try again later.",
@@ -77,7 +93,6 @@ const handleAuthError = (error: unknown): AuthError => {
       };
     }
 
-    // Handle specific HTTP status codes
     switch (axiosError.response.status) {
       case 400:
         return {
@@ -141,7 +156,6 @@ const handleAuthError = (error: unknown): AuthError => {
     }
   }
 
-  // Handle non-Axios errors
   if (error instanceof Error) {
     if (error.message.includes("Network Error")) {
       return {
@@ -161,26 +175,27 @@ const handleAuthError = (error: unknown): AuthError => {
   };
 };
 
+/**
+ * Zustand authentication store using persistence middleware
+ * Persists essential auth state to localStorage and handles user sessions
+ */
 const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       ...initialState,
 
-      // Enhanced Sign up Logic
+      /**
+       * Registers a new user account
+       * Performs basic client-side validation before submitting to API
+       */
       signUp: async (name, email, password, confirm_password) => {
         try {
           set({ isLoading: true, error: null });
 
-          // Client-side validation
-          if (!name.trim()) {
-            throw new Error("Name is required");
-          }
-          if (!email.trim()) {
-            throw new Error("Email is required");
-          }
-          if (password !== confirm_password) {
+          if (!name.trim()) throw new Error("Name is required");
+          if (!email.trim()) throw new Error("Email is required");
+          if (password !== confirm_password)
             throw new Error("Passwords do not match");
-          }
 
           const response = await axios.post(`${API_URL}/api/auth/register`, {
             email: email.trim(),
@@ -188,8 +203,6 @@ const useAuthStore = create<AuthState>()(
             name: name.trim(),
             confirm_password,
           });
-
-          console.log(response.status);
 
           const user = response.data;
 
@@ -200,7 +213,6 @@ const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error) {
-          console.log("AuthState Error: ", error);
           const authError = handleAuthError(error);
           set({
             user: null,
@@ -208,22 +220,20 @@ const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: authError,
           });
-          throw authError; // Re-throw for component handling
+          throw authError;
         }
       },
 
-      // Enhanced Log in logic
+      /**
+       * Authenticates a user using email and password
+       * Sets auth token and persists it via cookies
+       */
       logIn: async (email, password) => {
         try {
           set({ isLoading: true, error: null });
 
-          // Client-side validation
-          if (!email.trim()) {
-            throw new Error("Email is required");
-          }
-          if (!password) {
-            throw new Error("Password is required");
-          }
+          if (!email.trim()) throw new Error("Email is required");
+          if (!password) throw new Error("Password is required");
 
           const response = await axios.post(`${API_URL}/api/auth/login`, {
             email: email.trim(),
@@ -232,13 +242,10 @@ const useAuthStore = create<AuthState>()(
 
           const { user, token } = response.data;
 
-          // Set authorization header
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
           Cookies.set("auth-token", token, {
-            expires: 7, // in days
+            expires: 7,
             path: "/",
-            // secure: true,
             sameSite: "Lax",
           });
 
@@ -251,10 +258,7 @@ const useAuthStore = create<AuthState>()(
           });
         } catch (error) {
           const authError = handleAuthError(error);
-
-          // Clear any existing auth data on login failure
           delete axios.defaults.headers.common["Authorization"];
-
           set({
             user: null,
             token: null,
@@ -266,18 +270,23 @@ const useAuthStore = create<AuthState>()(
         }
       },
 
+      /**
+       * Clears token from state
+       * Typically used before logout or token refresh
+       */
       clearToken: () => set({ token: null }),
 
-      // Enhanced Sign out action
+      /**
+       * Logs out the current user
+       * Clears local storage, cookies, and auth headers
+       */
       logOut: async () => {
         try {
-          console.log("start");
           const token = get().token;
-
           if (token) {
-            // Remove auth token from storage and state
             await Cookies.remove("auth-token");
             await localStorage.removeItem("auth-storage");
+            delete axios.defaults.headers.common["Authorization"];
 
             set({
               user: null,
@@ -285,25 +294,20 @@ const useAuthStore = create<AuthState>()(
               isAuthenticated: false,
               error: null,
             });
-
-            // Optionally remove Authorization header globally
-            delete axios.defaults.headers.common["Authorization"];
-
-            console.log("logged out");
           }
         } catch (error) {
           console.warn("Logout error:", error);
         }
       },
 
-      // Enhanced Request Password Reset Logic
+      /**
+       * Requests a password reset link to be sent to the user's email
+       */
       requestPasswordReset: async (email) => {
         try {
           set({ isLoading: true, error: null });
 
-          if (!email.trim()) {
-            throw new Error("Email is required");
-          }
+          if (!email.trim()) throw new Error("Email is required");
 
           await axios.post(`${API_URL}/api/auth/request-password-reset`, {
             email: email.trim(),
@@ -311,84 +315,67 @@ const useAuthStore = create<AuthState>()(
 
           set({ isLoading: false });
 
-          // Return success indicator
           return { success: true, message: "Password reset email sent" };
         } catch (error) {
           const authError = handleAuthError(error);
-          set({
-            isLoading: false,
-            error: authError,
-          });
+          set({ isLoading: false, error: authError });
           throw authError;
         }
       },
 
-      // Enhanced Resend Verification Email Logic
+      /**
+       * Resends email verification to the specified user email
+       */
       resendVerificationEmail: async (email) => {
         try {
           set({ isLoading: true, error: null });
 
-          if (!email.trim()) {
-            throw new Error("Email is required");
-          }
+          if (!email.trim()) throw new Error("Email is required");
 
-          const response = await axios.post(
-            `${API_URL}/api/auth/resend-verification`,
-            { email: email.trim() }
-          );
+          await axios.post(`${API_URL}/api/auth/resend-verification`, {
+            email: email.trim(),
+          });
 
           set({ isLoading: false });
           return { success: true, message: "Verification email sent" };
         } catch (error) {
           const authError = handleAuthError(error);
-          set({
-            isLoading: false,
-            error: authError,
-          });
+          set({ isLoading: false, error: authError });
           throw authError;
         }
       },
 
-      // Enhanced Email Verification Logic
+      /**
+       * Verifies the user's email using a token
+       */
       verifyEmail: async (token) => {
         try {
           set({ isLoading: true, error: null });
 
-          if (!token) {
-            throw new Error("Verification token is required");
-          }
+          if (!token) throw new Error("Verification token is required");
 
-          const response = await axios.post(
-            `${API_URL}/api/auth/verify/${token}`
-          );
+          await axios.post(`${API_URL}/api/auth/verify/${token}`);
 
           set({ isLoading: false });
           return { success: true, message: "Email verified successfully" };
         } catch (error) {
           const authError = handleAuthError(error);
-          set({
-            isLoading: false,
-            error: authError,
-          });
+          set({ isLoading: false, error: authError });
           throw authError;
         }
       },
 
-      // Enhanced Password Reset Logic
+      /**
+       * Resets the user's password using the provided token and new password
+       */
       passwordReset: async (password, confirm_password, token) => {
         try {
           set({ isLoading: true, error: null });
 
-          // Client-side validation
-          if (!password) {
-            throw new Error("Password is required");
-          }
-          if (password !== confirm_password) {
+          if (!password) throw new Error("Password is required");
+          if (password !== confirm_password)
             throw new Error("Passwords do not match");
-          }
-          if (!token) {
-            throw new Error("Reset token is required");
-          }
+          if (!token) throw new Error("Reset token is required");
 
           await axios.post(`${API_URL}/api/auth/reset-password`, {
             password,
@@ -400,38 +387,31 @@ const useAuthStore = create<AuthState>()(
           return { success: true, message: "Password reset successfully" };
         } catch (error) {
           const authError = handleAuthError(error);
-          set({
-            isLoading: false,
-            error: authError,
-          });
+          set({ isLoading: false, error: authError });
           throw authError;
         }
       },
 
-      // Enhanced Google Login
+      /**
+       * Authenticates user via Google OAuth using a code
+       */
       googleLogin: async (code) => {
         try {
           set({ isLoading: true, error: null });
 
-          if (!code) {
-            throw new Error("Google authentication code is required");
-          }
+          if (!code) throw new Error("Google authentication code is required");
 
           const response = await axios.post(
             `${API_URL}/api/auth/google/login`,
-            {
-              code,
-            }
+            { code }
           );
 
           const { user, token } = response.data;
 
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
           Cookies.set("auth-token", token, {
-            expires: 7, // in days
+            expires: 7,
             path: "/",
-            // secure: true,
             sameSite: "Lax",
           });
 
@@ -444,53 +424,44 @@ const useAuthStore = create<AuthState>()(
           });
         } catch (error) {
           const authError = handleAuthError(error);
-          set({
-            isLoading: false,
-            error: authError,
-          });
+          set({ isLoading: false, error: authError });
           throw authError;
         }
       },
 
-      // Clear error - now synchronous
+      /**
+       * Clears any authentication error messages from state
+       */
       clearError: () => set({ error: null }),
 
-      // Enhanced Refresh token
+      /**
+       * Refreshes the current session token
+       * If it fails, the user is logged out automatically
+       */
       refreshToken: async () => {
         const { token } = get();
 
-        if (!token) {
-          throw new Error("No token to refresh");
-        }
+        if (!token) throw new Error("No token to refresh");
 
         try {
           set({ isLoading: true });
 
           const response = await axios.post(
             `${API_URL}/api/auth/refresh-token`,
-            {
-              token,
-            }
+            { token }
           );
 
           const { token: newToken } = response.data;
 
           axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
-
           Cookies.set("auth-token", newToken, {
-            expires: 7, // in days
+            expires: 7,
             path: "/",
-            // secure: true,
             sameSite: "Lax",
           });
 
-          set({
-            token: newToken,
-            isLoading: false,
-            error: null,
-          });
+          set({ token: newToken, isLoading: false, error: null });
         } catch (error) {
-          // If refresh fails, log out user
           const authError = handleAuthError(error);
           console.error("Token refresh failed:", authError);
           get().logOut();
@@ -512,28 +483,26 @@ const useAuthStore = create<AuthState>()(
 
 export default useAuthStore;
 
-// Enhanced axios interceptor with better error handling
+/**
+ * Axios response interceptor to handle token expiration globally
+ * Automatically tries to refresh token on 401 errors
+ */
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 errors (unauthorized)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Try to refresh the token
         await useAuthStore.getState().refreshToken();
-
-        // Retry the original request with new token
         const token = useAuthStore.getState().token;
         if (token) {
           originalRequest.headers["Authorization"] = `Bearer ${token}`;
           return axios(originalRequest);
         }
       } catch (refreshError) {
-        // If refresh fails, redirect to login or show error
         console.error("Token refresh failed:", refreshError);
         useAuthStore.getState().logOut();
       }
@@ -543,7 +512,9 @@ axios.interceptors.response.use(
   }
 );
 
-// Initialize auth header if we have a token on page load
+/**
+ * Initializes Axios with token from store (used on initial app load)
+ */
 const initializeAuth = () => {
   const token = useAuthStore.getState().token;
   if (token) {
@@ -551,5 +522,4 @@ const initializeAuth = () => {
   }
 };
 
-// Call initialization
 initializeAuth();

@@ -98,7 +98,7 @@ auth-flow/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/auth-flow.git
+git clone https://github.com/AsheeSoftworks/Authentication-Frontend-Boilerplate-Auth-Flow.git
 cd auth-flow
 ```
 
@@ -286,6 +286,6 @@ If you encounter any issues or have questions:
 
 **[⭐ Star this repo](https://github.com/AsheeSoftworks/Authentication-Frontend-Boilerplate-Auth-Flow)** if you found it helpful!
 
-Made with ❤️ by Abdul - Rasheed Said Boakye (https://github.com/AbdulRasheedSaid)
-
 </div>
+
+**Happy Coding! 🎉**

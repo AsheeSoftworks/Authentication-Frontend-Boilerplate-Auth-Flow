@@ -8,7 +8,6 @@ import {
   EyeOff,
   Mail,
   Lock,
-  Github,
   Chrome,
   Loader2,
   CheckCircle,
@@ -31,12 +30,15 @@ import { useRouter } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// SignIn component handles email/password and Google login
 export default function SignIn() {
+  // Local state for form handling and UI behavior
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
+  // Validation schema using Zod
   const registerSchema = z.object({
     email: z.string().email("Please enter a valid email"),
     password: z.string().min(6, "Password must be at least 6 characters"),
@@ -54,9 +56,9 @@ export default function SignIn() {
   >({});
 
   const router = useRouter();
-
   const { logIn, isLoading, error, clearError, googleLogin } = useAuthStore();
 
+  // Validates form data using Zod schema
   const validateForm = () => {
     const result = registerSchema.safeParse(formData);
 
@@ -74,65 +76,56 @@ export default function SignIn() {
     return true;
   };
 
-  // Clear errors when user starts typing
+  // Clears global auth error after 5 seconds
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
         clearError();
-      }, 5000); // Auto-clear error after 5 seconds
-
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [error, clearError]);
 
-  // Validate form in real-time after first submit attempt
+  // Triggers validation on every input change after first submission
   useEffect(() => {
     if (submitAttempted) {
       validateForm();
     }
   }, [formData, submitAttempted]);
 
+  // Handles input changes and updates form state
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Handles form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     useAuthStore.setState({ isLoading: true });
     setSubmitAttempted(true);
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
-    // Proceed with valid data
     const { email, password } = formData;
-    console.log("Start 1");
 
     try {
-      console.log("Next 1");
-      console.log(email, password);
       await logIn(email, password);
-
-      // Show success message
       setShowSuccessMessage(true);
 
-      // Redirect to sign in after a delay
+      // Redirect after success message
       setTimeout(() => {
         router.push("/dashboard?message=sigin-success");
       }, 2000);
     } catch (error: any) {
-      console.error("Sign up error:", error);
+      console.error("Sign in error:", error);
 
-      // Handle specific error cases
       if (error.code === "CONFLICT" && error.field === "email") {
         setFormErrors((prev) => ({
           ...prev,
-          email: "An account with this email dosen't exists",
+          email: "An account with this email doesn't exist",
         }));
       } else if (error.code === "VALIDATION_ERROR") {
-        // Handle validation errors from server
         setFormErrors((prev) => ({
           ...prev,
           [error.field || "general"]: error.message,
@@ -141,21 +134,19 @@ export default function SignIn() {
     }
   };
 
+  // Handles Google OAuth login
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (credentialResponse) => {
       try {
         await googleLogin(credentialResponse.code);
         setTimeout(() => {
-        router.push("/dashboard?message=sigin-success");
-      }, 2000);
-        router.push("/dashboard");
+          router.push("/dashboard?message=sigin-success");
+        }, 2000);
       } catch (error: any) {
         console.error("Google login failed:", error);
-        // Error will be handled by the store
       }
     },
-    onError: (error) => {
-      console.error("Google login failed:", error);
+    onError: () => {
       useAuthStore.setState({
         error: {
           message: "Google login failed. Please try again.",
@@ -166,10 +157,10 @@ export default function SignIn() {
     flow: "auth-code",
   });
 
-  const getErrorMessage = (field: keyof RegisterFormData) => {
-    return formErrors[field];
-  };
+  // Utility: Get specific error message for a field
+  const getErrorMessage = (field: keyof RegisterFormData) => formErrors[field];
 
+  // Utility: Set input class based on validation state
   const getInputClassNames = (
     field: keyof RegisterFormData,
     baseClasses: string
@@ -180,6 +171,7 @@ export default function SignIn() {
     }`;
   };
 
+  // Renders a success screen on login
   if (showSuccessMessage) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-8">
@@ -189,11 +181,8 @@ export default function SignIn() {
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Signed In Succesfully!
+              Signed In Successfully!
             </h2>
-            {/* <p className="text-gray-600 mb-4">
-                Please check your email to verify your account before signing in.
-              </p> */}
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
             <p className="text-sm text-gray-500 mt-2">
               Redirecting to Dashboard...
@@ -204,6 +193,7 @@ export default function SignIn() {
     );
   }
 
+  // Main Sign In form UI
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
