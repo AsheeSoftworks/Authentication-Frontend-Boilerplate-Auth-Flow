@@ -178,7 +178,6 @@ export default function ForgotPassword() {
     try {
       useAuthStore.setState({ isLoading: true });
       resendVerificationEmail(submitEmail);
-      useAuthStore.setState({ isLoading: false });
     } catch (error: any) {
       console.error("Sign up error:", error);
 
@@ -189,7 +188,7 @@ export default function ForgotPassword() {
         }));
       }
     } finally {
-      useAuthStore.setState({ isLoading: true });
+      useAuthStore.setState({ isLoading: false });
     }
   };
 
