@@ -166,7 +166,7 @@ export default function ForgotPassword() {
         }));
       }
     } finally {
-      useAuthStore.setState({ isLoading: true });
+      useAuthStore.setState({ isLoading: false });
     }
   };
 
